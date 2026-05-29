@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.auth import get_current_user, verify_password, create_access_token
@@ -21,6 +22,15 @@ from app.services import (
 from app.database import db
 
 app = FastAPI(title="Hackanton - Crowdlending", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://geocred-six.vercel.app"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 security = HTTPBearer()
 
 
