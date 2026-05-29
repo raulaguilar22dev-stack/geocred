@@ -74,12 +74,14 @@ export default function LoanDetailPage() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [investSuccess, setInvestSuccess] = useState(false);
 
-  const { data: loan, isLoading } = useQuery({
+  const { data: loan, isLoading, error } = useQuery({
     queryKey: ["loan", id],
     queryFn: async () => {
       const res = await api.get(`/loans/${id}`);
       return res.data as LoanDetail;
     },
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const investMutation = useMutation({
@@ -138,12 +140,34 @@ export default function LoanDetailPage() {
     },
   });
 
-  if (isLoading || !loan) {
+  if (isLoading) {
     return (
       <>
         <Navbar />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-slate-500">Cargando...</div>
+        </main>
+      </>
+    );
+  }
+
+  if (error || !loan) {
+    return (
+      <>
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-600 font-medium mb-2">Error al cargar el proyecto</p>
+            <p className="text-slate-500 text-sm">
+              {(error as any)?.response?.data?.detail || "No se pudo obtener la información del préstamo."}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 text-sm text-slate-900 underline"
+            >
+              Intentar de nuevo
+            </button>
+          </div>
         </main>
       </>
     );
