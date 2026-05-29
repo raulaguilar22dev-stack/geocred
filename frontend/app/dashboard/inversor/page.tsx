@@ -41,6 +41,11 @@ export default function InversorDashboard() {
     },
   });
 
+  const getLoanPurpose = (loanId: string) => {
+    const loan = publicLoans?.find((l) => l.id === loanId);
+    return loan?.purpose || `Préstamo ${loanId.slice(0, 8)}...`;
+  };
+
   return (
     <>
       <Navbar />
@@ -60,25 +65,28 @@ export default function InversorDashboard() {
                 <p className="text-slate-600">
                   Todavía no realizaste ninguna inversión.
                 </p>
+                <p className="text-sm text-slate-500 mt-2">
+                  Explorá los proyectos disponibles abajo y empezá a generar retornos.
+                </p>
               </Card>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 {myInvestments.map((inv) => (
                   <Card key={inv.id} className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-slate-900">
-                          Préstamo: {inv.loan_id}
+                        <p className="font-semibold text-slate-900">
+                          {getLoanPurpose(inv.loan_id)}
                         </p>
-                        <p className="text-sm text-slate-600">
-                          Invertido: ${inv.amount.toLocaleString()}
+                        <p className="text-sm text-slate-600 mt-1">
+                          Invertido: <span className="font-medium text-slate-900">${inv.amount.toLocaleString()}</span>
                         </p>
                       </div>
                       <Link
                         href={`/prestamos/${inv.loan_id}`}
-                        className="text-sm font-medium text-slate-900 hover:underline"
+                        className="text-sm font-medium bg-slate-100 text-slate-900 px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors"
                       >
-                        Ver préstamo →
+                        Ver proyecto →
                       </Link>
                     </div>
                   </Card>
@@ -90,7 +98,7 @@ export default function InversorDashboard() {
           {/* Préstamos disponibles */}
           <section>
             <h2 className="text-lg font-semibold text-slate-900 mb-4">
-              Préstamos disponibles para invertir
+              Préstamos buscando financiación
             </h2>
             {!publicLoans || publicLoans.length === 0 ? (
               <Card className="p-6 text-center">
@@ -99,38 +107,61 @@ export default function InversorDashboard() {
                 </p>
               </Card>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {publicLoans.map((loan) => (
-                  <Card key={loan.id} className="p-6">
-                    <h3 className="font-semibold text-slate-900 mb-2">
-                      {loan.purpose}
-                    </h3>
-                    <div className="space-y-2 text-sm mb-4">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Monto total</span>
-                        <span className="font-medium">
-                          ${loan.amount.toLocaleString()}
-                        </span>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {publicLoans.map((loan) => {
+                  const progress = Math.min(
+                    (loan.total_invested / loan.amount) * 100,
+                    100
+                  );
+                  const remaining = loan.amount - loan.total_invested;
+
+                  return (
+                    <Card key={loan.id} className="p-6 flex flex-col">
+                      <h3 className="font-semibold text-slate-900 mb-3">
+                        {loan.purpose}
+                      </h3>
+
+                      {/* Progress bar */}
+                      <div className="mb-4">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-slate-600">
+                            {progress.toFixed(0)}% financiado
+                          </span>
+                          <span className="font-medium text-slate-900">
+                            ${loan.total_invested.toLocaleString()} / ${loan.amount.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-3">
+                          <div
+                            className="bg-emerald-500 h-3 rounded-full transition-all"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Faltan ${remaining.toLocaleString()} para completar la meta
+                        </p>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Recaudado</span>
-                        <span className="font-medium">
-                          ${loan.total_invested.toLocaleString()}
-                        </span>
+
+                      <div className="space-y-2 text-sm mb-6 flex-1">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Retorno anual</span>
+                          <Badge text={`${loan.interest_rate}%`} variant="success" />
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Estado</span>
+                          <Badge text="Buscando inversores" variant="info" />
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Interés</span>
-                        <Badge text={`${loan.interest_rate}%`} variant="success" />
-                      </div>
-                    </div>
-                    <Link
-                      href={`/prestamos/${loan.id}`}
-                      className="block w-full text-center bg-slate-900 text-white py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors"
-                    >
-                      Ver detalle e invertir
-                    </Link>
-                  </Card>
-                ))}
+
+                      <Link
+                        href={`/prestamos/${loan.id}`}
+                        className="block w-full text-center bg-slate-900 text-white py-2.5 rounded-lg font-medium hover:bg-slate-800 transition-colors"
+                      >
+                        Invertir ahora
+                      </Link>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </section>

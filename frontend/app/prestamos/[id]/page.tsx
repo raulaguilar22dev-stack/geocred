@@ -72,6 +72,7 @@ export default function LoanDetailPage() {
   const [invoiceDesc, setInvoiceDesc] = useState("");
   const [invoiceAmount, setInvoiceAmount] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [investSuccess, setInvestSuccess] = useState(false);
 
   const { data: loan, isLoading } = useQuery({
     queryKey: ["loan", id],
@@ -86,7 +87,10 @@ export default function LoanDetailPage() {
       api.post("/investments", { loan_id: id, amount: parseFloat(investAmount) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loan", id] });
+      queryClient.invalidateQueries({ queryKey: ["my-investments"] });
       setInvestAmount("");
+      setInvestSuccess(true);
+      setTimeout(() => setInvestSuccess(false), 5000);
     },
   });
 
@@ -196,28 +200,107 @@ export default function LoanDetailPage() {
 
           {/* Invertir (solo inversores en funding) */}
           {isInvestor && loan.status === "funding" && (
-            <Card className="p-6 mb-6">
-              <h3 className="font-semibold text-slate-900 mb-3">Invertir en este proyecto</h3>
+            <Card className="p-6 mb-6 border-emerald-200 bg-emerald-50/30">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">Invertir en este proyecto</h3>
+                  <p className="text-sm text-slate-600">Apoyá este emprendimiento y generá retornos.</p>
+                </div>
+              </div>
+
+              {/* Funding progress */}
+              <div className="mb-4 bg-white rounded-lg p-4">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-slate-600">Progreso de financiación</span>
+                  <span className="font-medium text-slate-900">
+                    {Math.min((loan.total_invested / loan.amount) * 100, 100).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-3 mb-2">
+                  <div
+                    className="bg-emerald-500 h-3 rounded-full transition-all"
+                    style={{ width: `${Math.min((loan.total_invested / loan.amount) * 100, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>Recaudado: ${loan.total_invested.toLocaleString()}</span>
+                  <span>Meta: ${loan.amount.toLocaleString()}</span>
+                </div>
+                <p className="text-xs text-emerald-600 font-medium mt-1">
+                  Faltan ${(loan.amount - loan.total_invested).toLocaleString()} para completar
+                </p>
+              </div>
+
+              {/* User's existing investment */}
+              {hasInvested && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    Ya invertiste <span className="font-semibold">${loan.investments.find(i => i.investor_id === user?.id)?.amount.toLocaleString()}</span> en este proyecto.
+                  </p>
+                </div>
+              )}
+
               <div className="flex gap-3">
-                <input
-                  type="number"
-                  value={investAmount}
-                  onChange={(e) => setInvestAmount(e.target.value)}
-                  placeholder="Monto a invertir"
-                  className="flex-1 px-3 py-2 border border-slate-300 rounded-lg"
-                />
+                <div className="flex-1 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                  <input
+                    type="number"
+                    value={investAmount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && parseFloat(val) > loan.amount - loan.total_invested) {
+                        setInvestAmount(String(loan.amount - loan.total_invested));
+                      } else {
+                        setInvestAmount(val);
+                      }
+                      setInvestSuccess(false);
+                    }}
+                    placeholder="Monto a invertir"
+                    min="1"
+                    max={loan.amount - loan.total_invested}
+                    className="w-full pl-7 pr-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
                 <Button
                   onClick={() => investMutation.mutate()}
-                  disabled={investMutation.isPending || !investAmount}
+                  disabled={investMutation.isPending || !investAmount || parseFloat(investAmount) <= 0}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
-                  {investMutation.isPending ? "..." : "Invertir"}
+                  {investMutation.isPending ? "Procesando..." : "Invertir ahora"}
                 </Button>
               </div>
+
               {investMutation.isError && (
-                <p className="text-red-600 text-sm mt-2">
-                  {(investMutation.error as any)?.response?.data?.detail || "Error al invertir"}
-                </p>
+                <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-red-700 text-sm">
+                    {(investMutation.error as any)?.response?.data?.detail || "Error al procesar la inversión. Intentá de nuevo."}
+                  </p>
+                </div>
               )}
+
+              {investSuccess && (
+                <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                  <p className="text-emerald-700 text-sm font-medium">
+                    ¡Inversión realizada con éxito! 🎉
+                  </p>
+                  <p className="text-emerald-600 text-xs mt-0.5">
+                    Tu aporte ya forma parte de este proyecto.
+                  </p>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {isInvestor && loan.status !== "funding" && (
+            <Card className="p-6 mb-6 bg-slate-50 border-slate-200">
+              <p className="text-sm text-slate-600 text-center">
+                Este proyecto ya no acepta inversiones (estado: <Badge text={loan.status} variant="default" />).
+              </p>
             </Card>
           )}
 
