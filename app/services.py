@@ -107,7 +107,10 @@ class LoanService:
             investments = await db.list_investments_by_loan(loan_id)
             is_investor = any(inv["investor_id"] == user_id for inv in investments)
 
-        if not (is_owner or is_admin or is_investor):
+        # Permitir a inversores ver prestamos en funding aunque no hayan invertido
+        is_investor_viewer = user_role == "inversor" and loan["status"] in ("funding", "active")
+
+        if not (is_owner or is_admin or is_investor or is_investor_viewer):
             raise ValueError("No autorizado")
 
         loan["milestones"] = await db.list_milestones_by_loan(loan_id)
