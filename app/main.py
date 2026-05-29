@@ -34,6 +34,11 @@ app.add_middleware(
 security = HTTPBearer()
 
 
+@app.get("/")
+async def root():
+    return {"status": "ok"}
+
+
 @app.exception_handler(ValueError)
 async def value_error_handler(request, exc):
     return JSONResponse(
